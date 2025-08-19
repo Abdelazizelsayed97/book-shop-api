@@ -1,0 +1,300 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type UserWithoutPassword {
+  id: Int!
+  firstName: String!
+  lastName: String!
+  email: String!
+  phone: String!
+  isEmailVerified: Boolean
+  emailVerificationToken: String
+  emailVerificationExpires: DateTime
+  resetPasswordToken: String
+  resetPasswordExpires: DateTime
+  otpCode: String
+  otpExpires: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type AuthResponse {
+  success: Boolean!
+  message: String
+  token: String
+  user: UserWithoutPassword
+}
+
+type OtpResponse {
+  success: Boolean!
+  message: String
+  otpId: String
+}
+
+type UserEntity {
+  id: Int!
+  firstName: String!
+  lastName: String!
+  email: String!
+  password: String!
+  phone: String!
+  isEmailVerified: Boolean
+  emailVerificationToken: String
+  emailVerificationExpires: DateTime
+  resetPasswordToken: String
+  resetPasswordExpires: DateTime
+  otpCode: String
+  otpExpires: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Cart {
+  """Example field (placeholder)"""
+  exampleField: Int!
+}
+
+type Product {
+  id: Int!
+  name: String!
+  description: String!
+  price: Float!
+  stock: Int!
+  category: String!
+  brand: String!
+  image: String
+  rating: Float
+  reviewCount: Int
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type PaginationInfo {
+  page: Int!
+  limit: Int!
+  total: Int!
+  totalPages: Int!
+  hasNext: Boolean!
+  hasPrev: Boolean!
+}
+
+type PaginatedProducts {
+  products: [Product!]!
+  pagination: PaginationInfo!
+}
+
+type Book {
+  book_id: String!
+  title: String!
+  creatorId: String!
+  year: String!
+  isBorrowed: Boolean!
+}
+
+type Creator {
+  id: String!
+  name: String!
+  bookIds: [String!]!
+}
+
+type Query {
+  getUsers: [UserEntity!]!
+  getUser(id: Int!): UserEntity
+  cart(id: Int!): Cart!
+  products(filter: ProductFilterInput, pagination: PaginationInput, sort: ProductSortInput): PaginatedProducts!
+  product(id: Int!): Product!
+  categories: [String!]!
+  brands: [String!]!
+  productsByCategory(category: String!): [Product!]!
+  productsByBrand(brand: String!): [Product!]!
+  searchProducts(query: String!): [Product!]!
+  books: [Book!]!
+  book(id: String!): Book!
+  creators: [Creator!]!
+  creator(id: String!): Creator!
+  search: [SearchResult!]!
+}
+
+input ProductFilterInput {
+  searchKey: String
+  category: String
+  brand: String
+  minPrice: Float
+  maxPrice: Float
+  minRating: Float
+  inStock: Boolean
+  isActive: Boolean
+}
+
+input PaginationInput {
+  page: Int! = 1
+  limit: Int! = 10
+}
+
+input ProductSortInput {
+  sortBy: String
+  sortOrder: String
+}
+
+union SearchResult = Creator | Book
+
+type Mutation {
+  register(registerInput: RegisterDto!): AuthResponse!
+  login(loginInput: LoginDto!): AuthResponse!
+  verifyEmail(token: String!): AuthResponse!
+  forgotPassword(forgotPasswordDto: ForgotPasswordDto!): AuthResponse!
+  resetPassword(resetPasswordDto: ResetPasswordDto!): AuthResponse!
+  sendOtp(email: String!): OtpResponse!
+  verifyOtp(verifyOtpDto: VerifyOtpDto!): AuthResponse!
+  resendOtp(resendOtpDto: ResendOtpDto!): OtpResponse!
+  createUser(input: CreateUserDto!): UserEntity!
+  updateUser(input: UpdateUserDto!): UserEntity!
+  deleteUser(id: Int!): Boolean!
+  createCart(createCartInput: CreateCartInput!): Cart!
+  updateCart(updateCartInput: UpdateCartInput!): Cart!
+  removeCart(id: Int!): Cart!
+  createProduct(createProductInput: CreateProductInput!): Product!
+  updateProduct(updateProductInput: UpdateProductInput!): Product!
+  removeProduct(id: Int!): Product!
+  createBook(createBookInput: CreateBookInput!): Book!
+  updateBook(input: UpdateBookInput!): Book!
+  removeBook(id: String!): Book!
+  createCreator(createCreatorInput: CreateCreatorInput!): Creator!
+  updateCreator(updateCreatorInput: UpdateCreatorInput!): Creator!
+  removeCreator(id: String!): Creator!
+  removeSearchHistory(searchInput: CreateSearchInput!): SearchResult!
+}
+
+input RegisterDto {
+  firstName: String!
+  lastName: String!
+  email: String!
+  password: String!
+  phone: String!
+  role: Float! = 1
+}
+
+"""Input should be as string trimed to success the operation"""
+input LoginDto {
+  email: String!
+  password: String!
+}
+
+input ForgotPasswordDto {
+  email: String!
+}
+
+input ResetPasswordDto {
+  token: String!
+  newPassword: String!
+}
+
+input VerifyOtpDto {
+  email: String!
+  otpCode: String!
+}
+
+input ResendOtpDto {
+  email: String!
+}
+
+input CreateUserDto {
+  firstName: String!
+  lastName: String!
+  email: String!
+  password: String!
+  phone: String!
+}
+
+input UpdateUserDto {
+  id: Int!
+  firstName: String
+  lastName: String
+  email: String
+  password: String
+  phone: String
+  isEmailVerified: Boolean
+  emailVerificationToken: String
+  emailVerificationExpires: DateTime
+  resetPasswordToken: String
+  resetPasswordExpires: DateTime
+  otpCode: String
+  otpExpires: DateTime
+}
+
+input CreateCartInput {
+  """Example field (placeholder)"""
+  exampleField: Int!
+}
+
+input UpdateCartInput {
+  """Example field (placeholder)"""
+  exampleField: Int
+  id: Int!
+}
+
+input CreateProductInput {
+  name: String!
+  description: String!
+  price: Float!
+  stock: Int!
+  category: String!
+  brand: String!
+  image: String
+  rating: Float
+  reviewCount: Int
+  isActive: Boolean! = true
+}
+
+input UpdateProductInput {
+  name: String
+  description: String
+  price: Float
+  stock: Int
+  category: String
+  brand: String
+  image: String
+  rating: Float
+  reviewCount: Int
+  isActive: Boolean = true
+  id: Int!
+}
+
+"""
+This mutation responsable to add a new book to the libarary, all field are required 
+"""
+input CreateBookInput {
+  title: String!
+  creatorId: String!
+  year: String!
+  isBorrowed: Boolean! = false
+}
+
+input UpdateBookInput {
+  title: String
+  creatorId: String
+  year: String
+  isBorrowed: Boolean = false
+  book_id: String!
+}
+
+input CreateCreatorInput {
+  name: String!
+}
+
+input UpdateCreatorInput {
+  name: String
+  id: String!
+}
+
+input CreateSearchInput {
+  searchKey: String!
+  paginate: PaginationInput!
+}

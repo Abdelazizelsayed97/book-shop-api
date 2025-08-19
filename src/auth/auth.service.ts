@@ -1,0 +1,312 @@
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import {
+  RegisterDto,
+  LoginDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  VerifyOtpDto,
+  ResendOtpDto,
+} from './dto/create-auth.input';
+import {
+  AuthResponse,
+  OtpResponse,
+  UserWithoutPassword,
+} from './entities/auth.entity';
+import { EmailService } from './email.service';
+import { JwtAuthService } from './jwt.service';
+
+import * as bcrypt from 'bcryptjs';
+import { CreateUserDto } from 'src/users/dto/createUser.dto';
+
+import { UpdateUserDto } from 'src/users/dto/updateUser.dto';
+import { UsersService } from 'src/users/users.service';
+
+@Injectable()
+export class AuthService {
+  private verificationTokens: Map<string, any> = new Map();
+  private resetTokens: Map<string, any> = new Map();
+  private otpCodes: Map<string, any> = new Map();
+
+  constructor(
+    private readonly emailService: EmailService,
+    private readonly jwtAuthService: JwtAuthService,
+    private readonly usersService: UsersService,
+  ) {}
+
+  async register(registerDto: RegisterDto): Promise<AuthResponse> {
+    // التحقق من وجود المستخدم
+    const allUsers = this.usersService.findAll();
+    const existingUser = allUsers.find(
+      (user) => user.email === registerDto.email,
+    );
+    if (existingUser) {
+      throw new BadRequestException('البريد الإلكتروني مستخدم بالفعل');
+    }
+
+    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+    const verificationToken = this.jwtAuthService.generateVerificationToken();
+
+    // إنشاء مستخدم جديد
+    const createUserDto: CreateUserDto = {
+      firstName: registerDto.firstName,
+      lastName: registerDto.lastName,
+      email: registerDto.email,
+      password: hashedPassword,
+      phone: registerDto.phone,
+    };
+
+    const newUser = this.usersService.create(createUserDto);
+
+    // إضافة معلومات التحقق
+    const updateUserDto: UpdateUserDto = {
+      id: newUser.id,
+      emailVerificationToken: verificationToken,
+      emailVerificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 ساعة
+    };
+
+    this.usersService.update(newUser.id, updateUserDto);
+
+    this.verificationTokens.set(verificationToken, {
+      userId: newUser.id,
+      email: newUser.email,
+      expires: updateUserDto.emailVerificationExpires,
+    });
+
+    await this.emailService.sendVerificationEmail(
+      newUser.email,
+      verificationToken,
+    );
+
+    return {
+      success: true,
+      message:
+        'تم التسجيل بنجاح. يرجى التحقق من بريدك الإلكتروني لتأكيد الحساب.',
+    };
+  }
+
+  async login(loginDto: LoginDto): Promise<AuthResponse> {
+    const allUsers = this.usersService.findAll();
+    const user = allUsers.find((u) => u.email === loginDto.email);
+    if (!user) {
+      throw new UnauthorizedException('بيانات الدخول غير صحيحة');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      loginDto.password,
+      user.password,
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('بيانات الدخول غير صحيحة');
+    }
+
+    if (!user.isEmailVerified) {
+      throw new BadRequestException('يرجى تأكيد بريدك الإلكتروني أولاً');
+    }
+
+    const token = this.jwtAuthService.generateToken({
+      userId: user.id,
+      email: user.email,
+    });
+
+    // إزالة كلمة المرور من النتيجة
+    const userWithoutPassword: UserWithoutPassword = {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: user.phone,
+      isEmailVerified: user.isEmailVerified,
+      emailVerificationToken: user.emailVerificationToken,
+      emailVerificationExpires: user.emailVerificationExpires,
+      resetPasswordToken: user.resetPasswordToken,
+      resetPasswordExpires: user.resetPasswordExpires,
+      otpCode: user.otpCode,
+      otpExpires: user.otpExpires,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+
+    return {
+      success: true,
+      message: 'Operation done successfully',
+      token,
+      user: userWithoutPassword,
+    };
+  }
+
+  async verifyEmail(token: string): Promise<AuthResponse> {
+    const verificationData = this.verificationTokens.get(token);
+    if (!verificationData) {
+      throw new BadRequestException('رمز التحقق غير صحيح');
+    }
+
+    if (new Date() > verificationData.expires) {
+      this.verificationTokens.delete(token);
+      throw new BadRequestException('رمز التحقق منتهي الصلاحية');
+    }
+
+    const user = this.usersService.findOne(verificationData.userId);
+    if (!user) {
+      throw new BadRequestException('المستخدم غير موجود');
+    }
+
+    const updateUserDto: UpdateUserDto = {
+      id: user.id,
+      isEmailVerified: true,
+      emailVerificationToken: undefined,
+      emailVerificationExpires: undefined,
+    };
+
+    this.usersService.update(user.id, updateUserDto);
+    this.verificationTokens.delete(token);
+
+    return {
+      success: true,
+      message: 'تم تأكيد البريد الإلكتروني بنجاح',
+    };
+  }
+
+  async forgotPassword(
+    forgotPasswordDto: ForgotPasswordDto,
+  ): Promise<AuthResponse> {
+    const allUsers = this.usersService.findAll();
+    const user = allUsers.find((u) => u.email === forgotPasswordDto.email);
+    if (!user) {
+      throw new BadRequestException('البريد الإلكتروني غير موجود');
+    }
+
+    const resetToken = this.jwtAuthService.generateResetToken();
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000);
+
+    const updateUserDto: UpdateUserDto = {
+      id: user.id,
+      resetPasswordToken: resetToken,
+      resetPasswordExpires: resetExpires,
+    };
+
+    this.usersService.update(user.id, updateUserDto);
+
+    this.resetTokens.set(resetToken, {
+      userId: user.id,
+      email: user.email,
+      expires: resetExpires,
+    });
+
+    await this.emailService.sendResetPasswordEmail(user.email, resetToken);
+
+    return {
+      success: true,
+      message: 'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني',
+    };
+  }
+
+  async resetPassword(
+    resetPasswordDto: ResetPasswordDto,
+  ): Promise<AuthResponse> {
+    const resetData = this.resetTokens.get(resetPasswordDto.token);
+    if (!resetData) {
+      throw new BadRequestException('رمز إعادة التعيين غير صحيح');
+    }
+
+    if (new Date() > resetData.expires) {
+      this.resetTokens.delete(resetPasswordDto.token);
+      throw new BadRequestException('رمز إعادة التعيين منتهي الصلاحية');
+    }
+
+    const user = this.usersService.findOne(resetData.userId);
+    if (!user) {
+      throw new BadRequestException('المستخدم غير موجود');
+    }
+
+    const hashedPassword = await bcrypt.hash(resetPasswordDto.newPassword, 10);
+    const updateUserDto: UpdateUserDto = {
+      id: user.id,
+      password: hashedPassword,
+      resetPasswordToken: undefined,
+      resetPasswordExpires: undefined,
+    };
+
+    this.usersService.update(user.id, updateUserDto);
+    this.resetTokens.delete(resetPasswordDto.token);
+
+    return {
+      success: true,
+      message: 'تم إعادة تعيين كلمة المرور بنجاح',
+    };
+  }
+
+  async sendOtp(email: string): Promise<OtpResponse> {
+    const allUsers = this.usersService.findAll();
+    const user = allUsers.find((u) => u.email === email);
+    if (!user) {
+      throw new BadRequestException('البريد الإلكتروني غير موجود');
+    }
+
+    const otp = this.jwtAuthService.generateOtp();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    const updateUserDto: UpdateUserDto = {
+      id: user.id,
+      otpCode: otp,
+      otpExpires: otpExpires,
+    };
+
+    this.usersService.update(user.id, updateUserDto);
+
+    this.otpCodes.set(email, {
+      otp,
+      expires: otpExpires,
+    });
+
+    await this.emailService.sendOtpEmail(email, otp);
+
+    return {
+      success: true,
+      message: 'تم إرسال رمز التحقق إلى بريدك الإلكتروني',
+    };
+  }
+
+  async verifyOtp(verifyOtpDto: VerifyOtpDto): Promise<AuthResponse> {
+    const otpData = this.otpCodes.get(verifyOtpDto.email);
+    if (!otpData) {
+      throw new BadRequestException('رمز التحقق غير صحيح');
+    }
+
+    if (new Date() > otpData.expires) {
+      this.otpCodes.delete(verifyOtpDto.email);
+      throw new BadRequestException('رمز التحقق منتهي الصلاحية');
+    }
+
+    if (otpData.otp !== verifyOtpDto.otpCode) {
+      throw new BadRequestException('رمز التحقق غير صحيح');
+    }
+
+    const allUsers = this.usersService.findAll();
+    const user = allUsers.find((u) => u.email === verifyOtpDto.email);
+    if (!user) {
+      throw new BadRequestException('المستخدم غير موجود');
+    }
+
+    const updateUserDto: UpdateUserDto = {
+      id: user.id,
+      otpCode: undefined,
+      otpExpires: undefined,
+    };
+
+    this.usersService.update(user.id, updateUserDto);
+    this.otpCodes.delete(verifyOtpDto.email);
+
+    return {
+      success: true,
+      message: 'تم التحقق من الرمز بنجاح',
+    };
+  }
+
+  async resendOtp(resendOtpDto: ResendOtpDto): Promise<OtpResponse> {
+    return this.sendOtp(resendOtpDto.email);
+  }
+}
