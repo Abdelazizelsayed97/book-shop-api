@@ -36,11 +36,11 @@ import { Order } from './order/entities/order.entity';
             username: process.env.POSTGRES_USER || 'postgres',
             password: process.env.POSTGRES_PASSWORD || 'KareemAlsayed1997@#',
             database: process.env.POSTGRES_DB || 'postgres',
-            entities: [UserEntity, Creator, Book],
+            entities: [UserEntity, Creator, Book, Cart, Order],
             synchronize: true,
         }),
         // register repositories/entities for injection
-        TypeOrmModule.forFeature([UserEntity, Creator, Book, Cart, Order,]),
+        TypeOrmModule.forFeature([UserEntity, Creator, Book, Cart, Order]),
         AuthModule,
         UsersModule,
         CartModule,

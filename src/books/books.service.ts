@@ -12,7 +12,7 @@ export class BooksService {
     @InjectRepository(Book)
     private readonly bookRepository: Repository<Book>,
     private readonly creatorsService: CreatorsService,
-  ) { }
+  ) {}
 
   async create(createBookInput: CreateBookInput): Promise<Book> {
     const creators = await this.creatorsService.findManyByIds(

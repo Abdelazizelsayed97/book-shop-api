@@ -8,5 +8,4 @@ import { BookInterface } from '../entities/book.entity';
 export class CreateBookInput extends BookInterface {
   @Field(() => [String])
   creatorIds: string[];
-
 }

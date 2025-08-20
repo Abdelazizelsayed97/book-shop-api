@@ -1,7 +1,12 @@
 import { ObjectType, Field, InterfaceType } from '@nestjs/graphql';
 import { Creator } from 'src/creators/entities/creator.entity';
-import { Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
-
+import {
+  Column,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @InterfaceType()
 export class BookInterface {
@@ -17,7 +22,6 @@ export class BookInterface {
   @Field()
   @Column()
   isBorrowed: boolean;
-
 }
 
 @ObjectType()
@@ -29,5 +33,4 @@ export class Book extends BookInterface {
   @JoinTable()
   @ManyToMany(() => Creator, (creator) => creator.books)
   creator: Creator[];
-
 }

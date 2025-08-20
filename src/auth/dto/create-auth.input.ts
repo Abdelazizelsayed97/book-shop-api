@@ -45,7 +45,6 @@ export class LoginDto {
   password: string;
 }
 
-
 @InputType()
 export class ForgotPasswordDto {
   @Field()

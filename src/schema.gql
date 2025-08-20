@@ -3,7 +3,7 @@
 # ------------------------------------------------------
 
 type UserWithoutPassword {
-  id: Int!
+  id: String!
   firstName: String!
   lastName: String!
   email: String!
@@ -37,8 +37,10 @@ type OtpResponse {
   otpId: String
 }
 
-type UserEntity {
-  id: Int!
+type UserEntity implements IUser {
+  id: ID!
+  name: String!
+  role: String!
   firstName: String!
   lastName: String!
   email: String!
@@ -55,9 +57,40 @@ type UserEntity {
   updatedAt: DateTime!
 }
 
+interface IUser {
+  id: ID!
+  name: String!
+  role: String!
+}
+
+type ShippingAddress {
+  street: String!
+  city: String!
+  state: String
+  postalCode: String!
+  country: String!
+}
+
+type Creator implements IUser {
+  id: ID!
+  name: String!
+  role: String!
+  books: [Book!]!
+}
+
+type Book {
+  book_id: String!
+  title: String!
+  year: String!
+  isBorrowed: Boolean!
+  creator: [Creator!]!
+}
+
 type Cart {
-  """Example field (placeholder)"""
-  exampleField: Int!
+  cart_id: String!
+  user_id: String!
+  items: [Book!]!
+  shipping_address: ShippingAddress!
 }
 
 type Product {
@@ -90,23 +123,22 @@ type PaginatedProducts {
   pagination: PaginationInfo!
 }
 
-type Book {
-  book_id: String!
-  title: String!
-  creatorId: String!
-  year: String!
-  isBorrowed: Boolean!
+type Order {
+  """Example field (placeholder)"""
+  exampleField: Int!
 }
 
-type Creator {
-  id: String!
-  name: String!
-  bookIds: [String!]!
+input ShippingAddressInput {
+  street: String!
+  city: String!
+  state: String
+  postalCode: String!
+  country: String!
 }
 
 type Query {
   getUsers: [UserEntity!]!
-  getUser(id: Int!): UserEntity
+  getUser(id: String!): UserEntity
   cart(id: Int!): Cart!
   products(filter: ProductFilterInput, pagination: PaginationInput, sort: ProductSortInput): PaginatedProducts!
   product(id: Int!): Product!
@@ -119,7 +151,8 @@ type Query {
   book(id: String!): Book!
   creators: [Creator!]!
   creator(id: String!): Creator!
-  search: [SearchResult!]!
+  search(searchInput: SearchInput!): [SearchResult!]!
+  order(id: Int!): Order!
 }
 
 input ProductFilterInput {
@@ -145,6 +178,11 @@ input ProductSortInput {
 
 union SearchResult = Creator | Book
 
+input SearchInput {
+  searchKey: String!
+  paginate: PaginationInput!
+}
+
 type Mutation {
   register(registerInput: RegisterDto!): AuthResponse!
   login(loginInput: LoginDto!): AuthResponse!
@@ -156,7 +194,7 @@ type Mutation {
   resendOtp(resendOtpDto: ResendOtpDto!): OtpResponse!
   createUser(input: CreateUserDto!): UserEntity!
   updateUser(input: UpdateUserDto!): UserEntity!
-  deleteUser(id: Int!): Boolean!
+  deleteUser(id: String!): Boolean!
   createCart(createCartInput: CreateCartInput!): Cart!
   updateCart(updateCartInput: UpdateCartInput!): Cart!
   removeCart(id: Int!): Cart!
@@ -169,7 +207,10 @@ type Mutation {
   createCreator(createCreatorInput: CreateCreatorInput!): Creator!
   updateCreator(updateCreatorInput: UpdateCreatorInput!): Creator!
   removeCreator(id: String!): Creator!
-  removeSearchHistory(searchInput: CreateSearchInput!): SearchResult!
+  clearSearchHistory(searchInput: SearchInput!): Boolean!
+  createOrder(createOrderInput: CreateOrderInput!): Order!
+  updateOrder(updateOrderInput: UpdateOrderInput!): Order!
+  removeOrder(id: Int!): Order!
 }
 
 input RegisterDto {
@@ -178,7 +219,7 @@ input RegisterDto {
   email: String!
   password: String!
   phone: String!
-  role: Float! = 1
+  role: String! = "USER"
 }
 
 """Input should be as string trimed to success the operation"""
@@ -211,10 +252,12 @@ input CreateUserDto {
   email: String!
   password: String!
   phone: String!
+  shippingAddress: ShippingAddressInput
+  role: String!
 }
 
 input UpdateUserDto {
-  id: Int!
+  id: String!
   firstName: String
   lastName: String
   email: String
@@ -230,13 +273,24 @@ input UpdateUserDto {
 }
 
 input CreateCartInput {
-  """Example field (placeholder)"""
-  exampleField: Int!
+  cart_id: ID
+  user_id: String!
+  items: [CreateBookInput!]
+  shipping_address: ShippingAddressInput
+}
+
+"""
+This mutation responsable to add a new book to the libarary, all field are required 
+"""
+input CreateBookInput {
+  creatorIds: [String!]!
 }
 
 input UpdateCartInput {
-  """Example field (placeholder)"""
-  exampleField: Int
+  cart_id: ID
+  user_id: String
+  items: [CreateBookInput!]
+  shipping_address: ShippingAddressInput
   id: Int!
 }
 
@@ -267,22 +321,12 @@ input UpdateProductInput {
   id: Int!
 }
 
-"""
-This mutation responsable to add a new book to the libarary, all field are required 
-"""
-input CreateBookInput {
-  title: String!
-  creatorId: String!
-  year: String!
-  isBorrowed: Boolean! = false
-}
-
 input UpdateBookInput {
-  title: String
-  creatorId: String
-  year: String
-  isBorrowed: Boolean = false
   book_id: String!
+  title: String
+  year: String
+  isBorrowed: Boolean
+  creatorIds: [String!]
 }
 
 input CreateCreatorInput {
@@ -294,7 +338,13 @@ input UpdateCreatorInput {
   id: String!
 }
 
-input CreateSearchInput {
-  searchKey: String!
-  paginate: PaginationInput!
+input CreateOrderInput {
+  """Example field (placeholder)"""
+  exampleField: Int!
+}
+
+input UpdateOrderInput {
+  """Example field (placeholder)"""
+  exampleField: Int
+  id: Int!
 }

@@ -5,7 +5,7 @@ import { SearchResultUnion } from './entities/search.types';
 
 @Resolver(() => SearchResultUnion)
 export class SearchResolver {
-  constructor(private readonly searchService: SearchService) { }
+  constructor(private readonly searchService: SearchService) {}
 
   @Query(() => [SearchResultUnion], { name: 'search' })
   async findAll(

@@ -24,6 +24,7 @@ import { CreateUserDto } from 'src/users/dto/createUser.dto';
 
 import { UpdateUserDto } from 'src/users/dto/updateUser.dto';
 import { UsersService } from 'src/users/users.service';
+import { Args, Mutation } from '@nestjs/graphql';
 
 @Injectable()
 export class AuthService {
@@ -35,12 +36,13 @@ export class AuthService {
     private readonly emailService: EmailService,
     private readonly jwtAuthService: JwtAuthService,
     private readonly usersService: UsersService,
-  ) {}
+  ) { }
 
-  async register(registerDto: RegisterDto): Promise<AuthResponse> {
-    // التحقق من وجود المستخدم
-    const allUsers = this.usersService.findAll();
-    const existingUser = allUsers.find(
+  @Mutation(() => AuthResponse, { name: "register" })
+  async register(@Args('registerInput') registerDto: RegisterDto): Promise<AuthResponse> {
+    console.log('Registering user:', registerDto);
+    const allUsers = await this.usersService.findAll();
+    const existingUser = allUsers.map(
       (user) => user.email === registerDto.email,
     );
     if (existingUser) {
@@ -50,7 +52,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
     const verificationToken = this.jwtAuthService.generateVerificationToken();
 
-    // إنشاء مستخدم جديد
+
     const createUserDto: CreateUserDto = {
       firstName: registerDto.firstName,
       lastName: registerDto.lastName,
@@ -59,7 +61,7 @@ export class AuthService {
       phone: registerDto.phone,
     };
 
-    const newUser = this.usersService.create(createUserDto);
+    const newUser = await this.usersService.create(createUserDto);
 
     // إضافة معلومات التحقق
     const updateUserDto: UpdateUserDto = {
@@ -75,22 +77,23 @@ export class AuthService {
       email: newUser.email,
       expires: updateUserDto.emailVerificationExpires,
     });
-
-    await this.emailService.sendVerificationEmail(
-      newUser.email,
-      verificationToken,
-    );
-
+    // console.log('New user registered: before email sent', newUser);
+    // await this.emailService.sendVerificationEmail(
+    //   newUser.email,
+    //   verificationToken,
+    // );
+    console.log('New user registered: after email sent', newUser);
     return {
       success: true,
       message:
         'تم التسجيل بنجاح. يرجى التحقق من بريدك الإلكتروني لتأكيد الحساب.',
+      token: verificationToken,
+      user: newUser,
     };
   }
 
   async login(loginDto: LoginDto): Promise<AuthResponse> {
-    const allUsers = this.usersService.findAll();
-    const user = allUsers.find((u) => u.email === loginDto.email);
+    const user = await this.usersService.findOne(loginDto.email);
     if (!user) {
       throw new UnauthorizedException('بيانات الدخول غير صحيحة');
     }
@@ -149,7 +152,7 @@ export class AuthService {
       throw new BadRequestException('رمز التحقق منتهي الصلاحية');
     }
 
-    const user = this.usersService.findOne(verificationData.userId);
+    const user = await this.usersService.findOne(verificationData.userId);
     if (!user) {
       throw new BadRequestException('المستخدم غير موجود');
     }
@@ -173,7 +176,7 @@ export class AuthService {
   async forgotPassword(
     forgotPasswordDto: ForgotPasswordDto,
   ): Promise<AuthResponse> {
-    const allUsers = this.usersService.findAll();
+    const allUsers = await this.usersService.findAll();
     const user = allUsers.find((u) => u.email === forgotPasswordDto.email);
     if (!user) {
       throw new BadRequestException('البريد الإلكتروني غير موجود');
@@ -217,7 +220,7 @@ export class AuthService {
       throw new BadRequestException('رمز إعادة التعيين منتهي الصلاحية');
     }
 
-    const user = this.usersService.findOne(resetData.userId);
+    const user = await this.usersService.findOne(resetData.userId);
     if (!user) {
       throw new BadRequestException('المستخدم غير موجود');
     }
@@ -240,7 +243,7 @@ export class AuthService {
   }
 
   async sendOtp(email: string): Promise<OtpResponse> {
-    const allUsers = this.usersService.findAll();
+    const allUsers = await this.usersService.findAll();
     const user = allUsers.find((u) => u.email === email);
     if (!user) {
       throw new BadRequestException('البريد الإلكتروني غير موجود');
@@ -285,7 +288,7 @@ export class AuthService {
       throw new BadRequestException('رمز التحقق غير صحيح');
     }
 
-    const allUsers = this.usersService.findAll();
+    const allUsers = await this.usersService.findAll();
     const user = allUsers.find((u) => u.email === verifyOtpDto.email);
     if (!user) {
       throw new BadRequestException('المستخدم غير موجود');

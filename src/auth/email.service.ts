@@ -35,8 +35,9 @@ export class EmailService {
         </div>
       `,
     };
-
+    console.log('Sending verification email to:', email);
     await this.transporter.sendMail(mailOptions);
+    console.log('Verification email sent to:', email);
   }
 
   async sendResetPasswordEmail(email: string, token: string): Promise<void> {

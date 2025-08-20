@@ -1,30 +1,30 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UsersController } from './users.resolver';
+import { UsersResolver } from './users.resolver';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/createUser.dto';
 import { UpdateUserDto } from './dto/updateUser.dto';
 import { UserEntity } from './entities/user.entity';
 
-describe('UsersController', () => {
-  let controller: UsersController;
+describe('UsersResolver', () => {
+  let usersResolver: UsersResolver;
   let service: UsersService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [UsersController],
+      controllers: [UsersResolver],
       providers: [UsersService],
     }).compile();
 
-    controller = module.get<UsersResolver>(UsersResolver);
+    usersResolver = module.get<UsersResolver>(UsersResolver);
     service = module.get<UsersService>(UsersService);
   });
 
   it('should be defined', () => {
-    expect(controller).toBeDefined();
+    expect(usersResolver).toBeDefined();
   });
 
-  describe('getUsers', () => {
-    it('should return an array of users', () => {
+  describe('getUsers', async () => {
+    it('should return an array of users', async () => {
       const createUserDto: CreateUserDto = {
         firstName: 'John',
         lastName: 'Doe',
@@ -34,7 +34,7 @@ describe('UsersController', () => {
       };
 
       service.create(createUserDto);
-      const result = controller.getUsers();
+      const result = await usersResolver.getUsers();
 
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
@@ -42,7 +42,7 @@ describe('UsersController', () => {
   });
 
   describe('getUser', () => {
-    it('should return a user by id', () => {
+    it('should return a user by id', async () => {
       const createUserDto: CreateUserDto = {
         firstName: 'John',
         lastName: 'Doe',
@@ -51,20 +51,20 @@ describe('UsersController', () => {
         phone: '1234567890',
       };
 
-      const createdUser = service.create(createUserDto);
-      const result = controller.getUser(createdUser.id);
+      const createdUser = await service.create(createUserDto);
+      const result = await usersResolver.getUser(createdUser.id);
 
       expect(result).toEqual(createdUser);
     });
 
     it('should return null for non-existent user', () => {
-      const result = controller.getUser(999);
+      const result = usersResolver.getUser('999');
       expect(result).toBeNull();
     });
   });
 
   describe('createUser', () => {
-    it('should create a new user', () => {
+    it('should create a new user', async () => {
       const createUserDto: CreateUserDto = {
         firstName: 'John',
         lastName: 'Doe',
@@ -73,7 +73,7 @@ describe('UsersController', () => {
         phone: '1234567890',
       };
 
-      const result = controller.createUser(createUserDto);
+      const result = await usersResolver.createUser(createUserDto);
 
       expect(result).toHaveProperty('id');
       expect(result.firstName).toBe(createUserDto.firstName);
@@ -84,7 +84,7 @@ describe('UsersController', () => {
   });
 
   describe('updateUser', () => {
-    it('should update a user', () => {
+    it('should update a user', async () => {
       const createUserDto: CreateUserDto = {
         firstName: 'John',
         lastName: 'Doe',
@@ -93,14 +93,14 @@ describe('UsersController', () => {
         phone: '1234567890',
       };
 
-      const createdUser = service.create(createUserDto);
+      const createdUser = await service.create(createUserDto);
       const updateUserDto: UpdateUserDto = {
         id: createdUser.id,
         firstName: 'Jane',
         email: 'jane@example.com',
       };
 
-      const result = controller.updateUser(updateUserDto);
+      const result = await usersResolver.updateUser(updateUserDto);
 
       expect(result.firstName).toBe('Jane');
       expect(result.email).toBe('jane@example.com');
@@ -109,7 +109,7 @@ describe('UsersController', () => {
   });
 
   describe('deleteUser', () => {
-    it('should delete a user', () => {
+    it('should delete a user', async () => {
       const createUserDto: CreateUserDto = {
         firstName: 'John',
         lastName: 'Doe',
@@ -118,8 +118,8 @@ describe('UsersController', () => {
         phone: '1234567890',
       };
 
-      const createdUser = service.create(createUserDto);
-      const result = controller.deleteUser(createdUser.id);
+      const createdUser = await service.create(createUserDto);
+      const result = usersResolver.deleteUser(createdUser.id);
 
       expect(result).toBe(true);
       expect(service.findOne(createdUser.id)).toBeNull();

@@ -2,60 +2,53 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserEntity } from './entities/user.entity';
 import { CreateUserDto } from './dto/createUser.dto';
 import { UpdateUserDto } from './dto/updateUser.dto';
-import { RoleEnum } from 'src/utils/eums';
+
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class UsersService {
-  private readonly users: UserEntity[] = [];
+  private readonly users: Repository<UserEntity>;
 
-  findAll(): UserEntity[] {
-    return this.users;
+  async findAll(): Promise<UserEntity[]> {
+    return await this.users.find();
   }
 
-  findOne(id: string): UserEntity | null {
-    const user = this.users.find((u) => u.id === id);
-    return user || null;
+  async findOne(id: string): Promise<UserEntity | null> {
+    return this.users.findOne({ where: { id } }) || null;
   }
 
-  create(createUserDto: CreateUserDto): UserEntity {
-    const newUser: UserEntity = {
-      id: String(this.users.length + 1),
+  async create(createUserDto: CreateUserDto): Promise<UserEntity> {
+    const newUser = this.users.create({
       ...createUserDto,
       isEmailVerified: false,
       createdAt: new Date(),
       updatedAt: new Date(),
-      name: `${createUserDto.firstName} ${createUserDto.lastName}`.trim(),
-      role: createUserDto.role || RoleEnum.USER,
-    };
-    this.users.push(newUser);
+
+    });
+    await this.users.save(newUser);
     return newUser;
   }
 
-  update(id: string, updateUserDto: UpdateUserDto): UserEntity {
-    const userIndex = this.users.findIndex((u) => u.id === id);
-    if (userIndex === -1) {
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<UserEntity> {
+    const user = await this.findOne(id);
+    if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const updatedUser = {
-      ...this.users[userIndex],
-      ...updateUserDto,
-      id, // Ensure ID doesn't change
-      updatedAt: new Date(),
-      name: `${updateUserDto.firstName} ${updateUserDto.lastName}`.trim(),
-    };
-
-    this.users[userIndex] = updatedUser;
-    return updatedUser;
+    Object.assign(user, updateUserDto);
+    user.updatedAt = new Date();
+    await this.users.save(user);
+    return user;
   }
 
-  remove(id: string): boolean {
-    const userIndex = this.users.findIndex((u) => u.id === id);
-    if (userIndex === -1) {
+  async remove(id: string): Promise<boolean> {
+    const user = await this.findOne(id);
+    if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    this.users.splice(userIndex, 1);
+    await this.users.remove(user);
     return true;
   }
+
 }
