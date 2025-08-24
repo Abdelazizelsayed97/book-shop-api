@@ -12,15 +12,13 @@ export class BooksService {
     @InjectRepository(Book)
     private readonly bookRepository: Repository<Book>,
     private readonly creatorsService: CreatorsService,
-  ) {}
+  ) { }
 
   async create(createBookInput: CreateBookInput): Promise<Book> {
-    const creators = await this.creatorsService.findManyByIds(
-      createBookInput.creatorIds,
-    );
+    const creator = await this.creatorsService.findOne(createBookInput.creatorId);
     const newBook = this.bookRepository.create({
       ...createBookInput,
-      creator: creators,
+      creator: creator,
     });
     return this.bookRepository.save(newBook);
   }
@@ -29,6 +27,9 @@ export class BooksService {
     return this.bookRepository.find({ relations: ['creators'] });
   }
 
+  findManyByIds(ids: string[]): Promise<Book[]> {
+    return this.bookRepository.find({ where: { book_id: In(ids) } });
+  }
   async findOne(id: string): Promise<Book> {
     const book = await this.bookRepository.findOne({
       where: { book_id: id },
@@ -62,4 +63,6 @@ export class BooksService {
   async remove(id: string): Promise<void> {
     await this.bookRepository.delete(id);
   }
+
+
 }

@@ -21,6 +21,7 @@ export class EmailService {
     const mailOptions = {
       from: process.env.EMAIL_USER || 'your-email@gmail.com',
       to: email,
+      password: process.env.EMAIL_PASSWORD || 'nxye jhnm nbgz okpu',
       subject: 'تأكيد البريد الإلكتروني',
       html: `
         <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

@@ -11,6 +11,7 @@ import {
 @InterfaceType()
 export class BookInterface {
   @Field()
+
   @PrimaryGeneratedColumn('uuid')
   book_id: string;
   @Field()
@@ -32,5 +33,5 @@ export class Book extends BookInterface {
   @Field(() => [Creator])
   @JoinTable()
   @ManyToMany(() => Creator, (creator) => creator.books)
-  creator: Creator[];
+  creator: Creator;
 }

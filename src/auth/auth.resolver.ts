@@ -12,7 +12,7 @@ import {
 
 @Resolver()
 export class AuthResolver {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Mutation(() => AuthResponse)
   async register(
@@ -22,13 +22,13 @@ export class AuthResolver {
   }
 
   @Mutation(() => AuthResponse)
-  async login(@Args('loginInput') loginDto: LoginDto): Promise<AuthResponse> {
-    return this.authService.login(loginDto);
+  async login(@Args('loginInput') loginInput: LoginDto): Promise<AuthResponse> {
+    return this.authService.login(loginInput);
   }
 
   @Mutation(() => AuthResponse)
-  async verifyEmail(@Args('token') token: string): Promise<AuthResponse> {
-    return this.authService.verifyEmail(token);
+  async verifyEmail(@Args('otpCode') otpCode: string, @Args('userId') userId: string): Promise<AuthResponse> {
+    return this.authService.verifyEmail(otpCode, userId);
   }
 
   @Mutation(() => AuthResponse)

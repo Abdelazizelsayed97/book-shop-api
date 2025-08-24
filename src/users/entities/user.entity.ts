@@ -1,10 +1,11 @@
 import { Field, ObjectType, ID } from '@nestjs/graphql';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { IUser } from './user.interface';
 import { RoleEnum } from 'src/utils/eums';
 
 @Entity('users')
 @ObjectType({ implements: () => IUser })
+
 export class UserEntity implements IUser {
   @PrimaryGeneratedColumn('uuid')
   @Field(() => ID)
@@ -23,17 +24,11 @@ export class UserEntity implements IUser {
 
   @Column()
   @Field()
-  get name(): string {
-    return `${this.firstName} ${this.lastName}`.trim();
-  }
-
-  @Column()
-  @Field()
   email: string;
 
   @Column()
-  @Field()
-  password: string;
+  @Field({ nullable: true })
+  password?: string;
 
   @Column()
   @Field()
@@ -75,3 +70,7 @@ export class UserEntity implements IUser {
   @Field(() => Date)
   updatedAt: Date;
 }
+function Setter(): (target: typeof UserEntity) => void | typeof UserEntity {
+  throw new Error('Function not implemented.');
+}
+

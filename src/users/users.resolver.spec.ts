@@ -122,7 +122,7 @@ describe('UsersResolver', () => {
       const result = usersResolver.deleteUser(createdUser.id);
 
       expect(result).toBe(true);
-      expect(service.findOne(createdUser.id)).toBeNull();
+      expect(service.findByID(createdUser.id)).toBeNull();
     });
   });
 });

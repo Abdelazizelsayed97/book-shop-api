@@ -11,189 +11,88 @@ import {
   PaginatedProducts,
   PaginationInfo,
 } from './entities/pagination.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class ProductsService {
-  private products: Product[] = [
-    {
-      id: 1,
-      name: 'iPhone 15 Pro',
-      description: 'أحدث هواتف آبل مع كاميرا متطورة',
-      price: 999.99,
-      stock: 50,
-      category: 'هواتف',
-      brand: 'Apple',
-      image: 'https://example.com/iphone15.jpg',
-      rating: 4.8,
-      reviewCount: 1250,
-      isActive: true,
-      createdAt: new Date('2024-01-15'),
-      updatedAt: new Date('2024-01-15'),
-    },
-    {
-      id: 2,
-      name: 'Samsung Galaxy S24',
-      description: 'هاتف سامسونج الجديد مع الذكاء الاصطناعي',
-      price: 899.99,
-      stock: 75,
-      category: 'هواتف',
-      brand: 'Samsung',
-      image: 'https://example.com/galaxy-s24.jpg',
-      rating: 4.6,
-      reviewCount: 890,
-      isActive: true,
-      createdAt: new Date('2024-01-20'),
-      updatedAt: new Date('2024-01-20'),
-    },
-    {
-      id: 3,
-      name: 'MacBook Pro M3',
-      description: 'لابتوب احترافي مع معالج M3',
-      price: 1999.99,
-      stock: 25,
-      category: 'لابتوبات',
-      brand: 'Apple',
-      image: 'https://example.com/macbook-pro.jpg',
-      rating: 4.9,
-      reviewCount: 567,
-      isActive: true,
-      createdAt: new Date('2024-01-10'),
-      updatedAt: new Date('2024-01-10'),
-    },
-    {
-      id: 4,
-      name: 'Dell XPS 13',
-      description: 'لابتوب رفيع وخفيف للعمل',
-      price: 1299.99,
-      stock: 40,
-      category: 'لابتوبات',
-      brand: 'Dell',
-      image: 'https://example.com/dell-xps.jpg',
-      rating: 4.5,
-      reviewCount: 432,
-      isActive: true,
-      createdAt: new Date('2024-01-05'),
-      updatedAt: new Date('2024-01-05'),
-    },
-    {
-      id: 5,
-      name: 'AirPods Pro',
-      description: 'سماعات لاسلكية مع إلغاء الضوضاء',
-      price: 249.99,
-      stock: 100,
-      category: 'سماعات',
-      brand: 'Apple',
-      image: 'https://example.com/airpods-pro.jpg',
-      rating: 4.7,
-      reviewCount: 2100,
-      isActive: true,
-      createdAt: new Date('2024-01-12'),
-      updatedAt: new Date('2024-01-12'),
-    },
-  ];
+  constructor(
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
+  ) { }
 
-  create(createProductInput: CreateProductInput): Product {
-    const newProduct: Product = {
-      id: this.products.length + 1,
-      ...createProductInput,
-      rating: createProductInput.rating || 0,
-      reviewCount: createProductInput.reviewCount || 0,
-      isActive: createProductInput.isActive ?? true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    this.products.push(newProduct);
-    return newProduct;
+  create(createProductInput: CreateProductInput): Promise<Product> {
+    const newProduct = this.productRepository.create(createProductInput);
+    return this.productRepository.save(newProduct);
   }
 
-  findAll(
+  async findAll(
     filter?: ProductFilterInput,
     pagination?: PaginationInput,
     sort?: ProductSortInput,
-  ): PaginatedProducts {
-    let filteredProducts = [...this.products];
+  ): Promise<PaginatedProducts> {
+    const queryBuilder = this.productRepository.createQueryBuilder('product');
 
     if (filter) {
       if (filter.searchKey) {
-        const searchTerm = filter.searchKey.toLowerCase();
-        filteredProducts = filteredProducts.filter(
-          (product) =>
-            product.name.toLowerCase().includes(searchTerm) ||
-            product.description.toLowerCase().includes(searchTerm) ||
-            product.brand.toLowerCase().includes(searchTerm),
+        queryBuilder.andWhere(
+          '(product.name ILIKE :search OR product.description ILIKE :search OR product.brand ILIKE :search)',
+          { search: `%${filter.searchKey}%` },
         );
       }
 
       if (filter.category) {
-        filteredProducts = filteredProducts.filter(
-          (product) => product.category === filter.category,
-        );
+        queryBuilder.andWhere('product.category = :category', {
+          category: filter.category,
+        });
       }
 
       if (filter.brand) {
-        filteredProducts = filteredProducts.filter(
-          (product) => product.brand === filter.brand,
-        );
+        queryBuilder.andWhere('product.brand = :brand', { brand: filter.brand });
       }
 
       if (filter.minPrice !== undefined) {
-        filteredProducts = filteredProducts.filter(
-          (product) => product.price >= filter.minPrice!,
-        );
+        queryBuilder.andWhere('product.price >= :minPrice', {
+          minPrice: filter.minPrice,
+        });
       }
 
       if (filter.maxPrice !== undefined) {
-        filteredProducts = filteredProducts.filter(
-          (product) => product.price <= filter.maxPrice!,
-        );
+        queryBuilder.andWhere('product.price <= :maxPrice', {
+          maxPrice: filter.maxPrice,
+        });
       }
 
       if (filter.minRating !== undefined) {
-        filteredProducts = filteredProducts.filter(
-          (product) => (product.rating || 0) >= filter.minRating!,
-        );
+        queryBuilder.andWhere('product.rating >= :minRating', {
+          minRating: filter.minRating,
+        });
       }
 
       if (filter.inStock !== undefined) {
-        filteredProducts = filteredProducts.filter((product) =>
-          filter.inStock ? product.stock > 0 : product.stock === 0,
-        );
+        queryBuilder.andWhere(filter.inStock ? 'product.stock > 0' : 'product.stock = 0');
       }
 
       if (filter.isActive !== undefined) {
-        filteredProducts = filteredProducts.filter(
-          (product) => product.isActive === filter.isActive,
-        );
+        queryBuilder.andWhere('product.isActive = :isActive', {
+          isActive: filter.isActive,
+        });
       }
     }
 
-    // تطبيق الترتيب
     if (sort?.sortBy) {
-      filteredProducts.sort((a, b) => {
-        let aValue: any = a[sort.sortBy!];
-        let bValue: any = b[sort.sortBy!];
-
-        if (sort.sortOrder === 'DESC') {
-          [aValue, bValue] = [bValue, aValue];
-        }
-
-        if (typeof aValue === 'string') {
-          return aValue.localeCompare(bValue);
-        }
-        return aValue - bValue;
-      });
+      queryBuilder.orderBy(`product.${sort.sortBy}`, sort.sortOrder || 'ASC');
     }
 
-    // تطبيق الترقيم
     const page = pagination?.page || 1;
     const limit = pagination?.limit || 10;
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
+    const skip = (page - 1) * limit;
 
-    const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+    const [products, total] = await queryBuilder
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
 
-    const total = filteredProducts.length;
     const totalPages = Math.ceil(total / limit);
 
     const paginationInfo: PaginationInfo = {
@@ -206,73 +105,71 @@ export class ProductsService {
     };
 
     return {
-      products: paginatedProducts,
+      products,
       pagination: paginationInfo,
     };
   }
 
-  findOne(id: number): Product {
-    const product = this.products.find((product) => product.id === id);
+  async findOne(id: string): Promise<Product> {
+    const product = await this.productRepository.findOne({ where: { id } });
     if (!product) {
       throw new NotFoundException(`المنتج برقم ${id} غير موجود`);
     }
     return product;
   }
 
-  update(id: number, updateProductInput: UpdateProductInput): Product {
-    const productIndex = this.products.findIndex(
-      (product) => product.id === id,
-    );
-    if (productIndex === -1) {
-      throw new NotFoundException(`المنتج برقم ${id} غير موجود`);
-    }
+  async update(
+    id: string,
+    updateProductInput: UpdateProductInput,
+  ): Promise<Product> {
+    const product = await this.productRepository.preload({
 
-    this.products[productIndex] = {
-      ...this.products[productIndex],
       ...updateProductInput,
-      updatedAt: new Date(),
-    };
+    });
 
-    return this.products[productIndex];
-  }
-
-  remove(id: number): Product {
-    const productIndex = this.products.findIndex(
-      (product) => product.id === id,
-    );
-    if (productIndex === -1) {
+    if (!product) {
       throw new NotFoundException(`المنتج برقم ${id} غير موجود`);
     }
-
-    const removedProduct = this.products[productIndex];
-    this.products.splice(productIndex, 1);
-    return removedProduct;
+    return this.productRepository.save(product);
   }
 
-  // وظائف إضافية مفيدة
-  getCategories(): string[] {
-    return [...new Set(this.products.map((product) => product.category))];
+  async remove(id: string): Promise<Product> {
+    const product = await this.findOne(id);
+    await this.productRepository.remove(product);
+    return product;
   }
 
-  getBrands(): string[] {
-    return [...new Set(this.products.map((product) => product.brand))];
+  async getCategories(): Promise<string[]> {
+    const categories = await this.productRepository
+      .createQueryBuilder('product')
+      .select('DISTINCT product.category', 'category')
+      .getRawMany();
+    return categories.map((c) => c.category);
   }
 
-  getProductsByCategory(category: string): Product[] {
-    return this.products.filter((product) => product.category === category);
+  async getBrands(): Promise<string[]> {
+    const brands = await this.productRepository
+      .createQueryBuilder('product')
+      .select('DISTINCT product.brand', 'brand')
+      .getRawMany();
+    return brands.map((b) => b.brand);
   }
 
-  getProductsByBrand(brand: string): Product[] {
-    return this.products.filter((product) => product.brand === brand);
+  getProductsByCategory(category: string): Promise<Product[]> {
+    return this.productRepository.find({ where: { category } });
   }
 
-  searchProducts(query: string): Product[] {
-    const searchTerm = query.toLowerCase();
-    return this.products.filter(
-      (product) =>
-        product.name.toLowerCase().includes(searchTerm) ||
-        product.description.toLowerCase().includes(searchTerm) ||
-        product.brand.toLowerCase().includes(searchTerm),
-    );
+  getProductsByBrand(brand: string): Promise<Product[]> {
+    return this.productRepository.find({ where: { brand } });
+  }
+
+  searchProducts(query: string): Promise<Product[]> {
+    return this.productRepository
+      .createQueryBuilder('product')
+      .where(
+        'product.name ILIKE :query OR product.description ILIKE :query OR product.brand ILIKE :query',
+        { query: `%${query}%` },
+      )
+      .getMany();
   }
 }

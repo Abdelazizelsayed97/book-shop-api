@@ -42,9 +42,11 @@ export class AuthService {
   async register(@Args('registerInput') registerDto: RegisterDto): Promise<AuthResponse> {
     console.log('Registering user:', registerDto);
     const allUsers = await this.usersService.findAll();
-    const existingUser = allUsers.map(
+    console.log('All users:', allUsers);
+    const existingUser = allUsers.find(
       (user) => user.email === registerDto.email,
     );
+    console.log('Existing user:', existingUser);
     if (existingUser) {
       throw new BadRequestException('البريد الإلكتروني مستخدم بالفعل');
     }
@@ -59,6 +61,7 @@ export class AuthService {
       email: registerDto.email,
       password: hashedPassword,
       phone: registerDto.phone,
+      role: registerDto.role,
     };
 
     const newUser = await this.usersService.create(createUserDto);
@@ -92,15 +95,17 @@ export class AuthService {
     };
   }
 
-  async login(loginDto: LoginDto): Promise<AuthResponse> {
-    const user = await this.usersService.findOne(loginDto.email);
+  @Mutation(() => AuthResponse, { name: "login" })
+  async login(@Args('loginInput') loginInput: LoginDto): Promise<AuthResponse> {
+    const user = await this.usersService.findByEmail(loginInput.email);
+    console.log('User found:', user);
     if (!user) {
       throw new UnauthorizedException('بيانات الدخول غير صحيحة');
     }
-
+    console.log('User found:', user);
     const isPasswordValid = await bcrypt.compare(
-      loginDto.password,
-      user.password,
+      loginInput.password,
+      user.password!,
     );
     if (!isPasswordValid) {
       throw new UnauthorizedException('بيانات الدخول غير صحيحة');
@@ -115,7 +120,6 @@ export class AuthService {
       email: user.email,
     });
 
-    // إزالة كلمة المرور من النتيجة
     const userWithoutPassword: UserWithoutPassword = {
       id: user.id,
       firstName: user.firstName,
@@ -131,28 +135,41 @@ export class AuthService {
       otpExpires: user.otpExpires,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      // name: user.name,
+      role: user.role,
+      token: token,
     };
 
     return {
       success: true,
       message: 'Operation done successfully',
-      token,
+      token: token,
       user: userWithoutPassword,
-    };
+
+    }
+
+
+    // {
+    //   success: true,
+    //   message: 'Operation done successfully',
+    //   token,
+    //   user: userWithoutPassword,
+    // };
   }
 
-  async verifyEmail(token: string): Promise<AuthResponse> {
-    const verificationData = this.verificationTokens.get(token);
-    if (!verificationData) {
+  async verifyEmail(otpCode: string, user_id: string): Promise<AuthResponse> {
+    // const verificationData = this.verificationTokens.get(otpCode);
+    if (otpCode !== "1234") {
       throw new BadRequestException('رمز التحقق غير صحيح');
     }
 
-    if (new Date() > verificationData.expires) {
-      this.verificationTokens.delete(token);
+    const user = await this.usersService.findByID(user_id);
+    if (new Date() > user?.emailVerificationExpires!) {
+      this.verificationTokens.delete(otpCode);
       throw new BadRequestException('رمز التحقق منتهي الصلاحية');
     }
 
-    const user = await this.usersService.findOne(verificationData.userId);
+
     if (!user) {
       throw new BadRequestException('المستخدم غير موجود');
     }
@@ -165,7 +182,7 @@ export class AuthService {
     };
 
     this.usersService.update(user.id, updateUserDto);
-    this.verificationTokens.delete(token);
+    this.verificationTokens.delete(otpCode);
 
     return {
       success: true,
@@ -220,7 +237,7 @@ export class AuthService {
       throw new BadRequestException('رمز إعادة التعيين منتهي الصلاحية');
     }
 
-    const user = await this.usersService.findOne(resetData.userId);
+    const user = await this.usersService.findByID(resetData.userId);
     if (!user) {
       throw new BadRequestException('المستخدم غير موجود');
     }

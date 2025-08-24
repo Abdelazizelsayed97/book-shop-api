@@ -1,53 +1,59 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { CreateUserDto } from './dto/createUser.dto';
 import { UpdateUserDto } from './dto/updateUser.dto';
 
-import { Repository } from 'typeorm';
-
 @Injectable()
 export class UsersService {
-  private readonly users: Repository<UserEntity>;
+  constructor(
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
+  ) { }
 
   async findAll(): Promise<UserEntity[]> {
-    return await this.users.find();
+    return await this.userRepository.find();
   }
 
-  async findOne(id: string): Promise<UserEntity | null> {
-    return this.users.findOne({ where: { id } }) || null;
+  async findByID(id: string): Promise<UserEntity | null> {
+    return this.userRepository.findOne({ where: { id: id } }) || null;
   }
-
+  async findByEmail(email: string): Promise<UserEntity | null> {
+    return this.userRepository.findOne({ where: { email: email } }) || null;
+  }
   async create(createUserDto: CreateUserDto): Promise<UserEntity> {
-    const newUser = this.users.create({
+    const newUser = this.userRepository.create({
       ...createUserDto,
       isEmailVerified: false,
       createdAt: new Date(),
       updatedAt: new Date(),
 
     });
-    await this.users.save(newUser);
+    await this.userRepository.save(newUser);
     return newUser;
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<UserEntity> {
-    const user = await this.findOne(id);
+    const user = await this.findByID(id);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
     Object.assign(user, updateUserDto);
     user.updatedAt = new Date();
-    await this.users.save(user);
+    await this.userRepository.save(user);
     return user;
   }
 
   async remove(id: string): Promise<boolean> {
-    const user = await this.findOne(id);
+    const user = await this.findByID(id);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    await this.users.remove(user);
+
+    await this.userRepository.remove(user);
     return true;
   }
 

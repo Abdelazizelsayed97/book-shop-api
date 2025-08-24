@@ -6,7 +6,7 @@ import { UpdateCartInput } from './dto/update-cart.input';
 
 @Resolver(() => Cart)
 export class CartResolver {
-  constructor(private readonly cartService: CartService) {}
+  constructor(private readonly cartService: CartService) { }
 
   @Mutation(() => Cart)
   createCart(@Args('createCartInput') createCartInput: CreateCartInput) {
@@ -19,7 +19,7 @@ export class CartResolver {
   }
 
   @Query(() => Cart, { name: 'cart' })
-  findOne(@Args('id', { type: () => Int }) id: number) {
+  findOne(@Args('id', { type: () => String }) id: string) {
     return this.cartService.findOne(id);
   }
 
@@ -29,7 +29,7 @@ export class CartResolver {
   }
 
   @Mutation(() => Cart)
-  removeCart(@Args('id', { type: () => Int }) id: number) {
+  removeCart(@Args('id', { type: () => String }) id: string) {
     return this.cartService.remove(id);
   }
 }

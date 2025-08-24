@@ -6,8 +6,8 @@ export abstract class IUser {
   @Field(() => ID)
   id: string;
 
-  @Field()
-  name: string;
+  // @Field()
+  // name: string;
   @Field()
   role: RoleEnum = RoleEnum.USER;
 }

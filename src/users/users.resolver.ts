@@ -15,7 +15,7 @@ export class UsersResolver {
 
   @Query(() => UserEntity, { name: 'getUser', nullable: true })
   async getUser(@Args('id') id: string): Promise<UserEntity | null> {
-    return this.usersService.findOne(id);
+    return this.usersService.findByID(id);
   }
 
   @Mutation(() => UserEntity, { name: 'createUser' })

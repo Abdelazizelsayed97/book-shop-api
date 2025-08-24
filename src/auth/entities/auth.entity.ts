@@ -1,52 +1,22 @@
 import { ObjectType, Field, Int } from '@nestjs/graphql';
+import { UserEntity } from 'src/users/entities/user.entity';
+import { Column } from 'typeorm';
 
 @ObjectType()
-export class UserWithoutPassword {
+export class UserWithoutPassword extends UserEntity {
   @Field()
-  id: string;
-
-  @Field()
-  firstName: string;
-
-  @Field()
-  lastName: string;
-
-  @Field()
-  email: string;
-
-  @Field()
-  phone: string;
-
-  @Field({ nullable: true })
-  isEmailVerified?: boolean;
-
-  @Field({ nullable: true })
-  emailVerificationToken?: string;
-
-  @Field({ nullable: true })
-  emailVerificationExpires?: Date;
-
-  @Field({ nullable: true })
-  resetPasswordToken?: string;
-
-  @Field({ nullable: true })
-  resetPasswordExpires?: Date;
-
-  @Field({ nullable: true })
-  otpCode?: string;
-
-  @Field({ nullable: true })
-  otpExpires?: Date;
-
-  @Field()
-  createdAt: Date;
-
-  @Field()
-  updatedAt: Date;
+  @Column()
+  token: string;
 }
 
 @ObjectType()
 export class AuthResponse {
+  constructor(data: any) {
+    this.success = data.success;
+    this.message = data.message;
+    this.token = data.token;
+    this.user = data.user;
+  }
   @Field()
   success: boolean;
 
@@ -56,8 +26,8 @@ export class AuthResponse {
   @Field({ nullable: true })
   token?: string;
 
-  @Field(() => UserWithoutPassword, { nullable: true })
-  user?: UserWithoutPassword;
+  @Field(() => UserEntity, { nullable: true })
+  user?: UserEntity;
 }
 
 @ObjectType()

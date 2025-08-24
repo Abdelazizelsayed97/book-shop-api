@@ -1,62 +1,62 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCreatorInput } from './dto/create-creator.input';
 import { UpdateCreatorInput } from './dto/update-creator.input';
 import { Creator } from './entities/creator.entity';
-import { RoleEnum } from 'src/utils/eums';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class CreatorsService {
-  creators: Creator[] = [];
-  create(createCreatorInput: CreateCreatorInput) {
-    this.creators.push({
-      ...createCreatorInput,
-      id: Date.now().toString(),
-      books: [],
-      role: RoleEnum.USER,
-    });
-    return 'This action adds a new creator';
+  constructor(
+    @InjectRepository(Creator)
+    private readonly creatorRepository: Repository<Creator>,
+  ) { }
+
+  create(createCreatorInput: CreateCreatorInput): Promise<Creator> {
+    const newCreator = this.creatorRepository.create(createCreatorInput);
+    return this.creatorRepository.save(newCreator);
   }
 
-  findAll() {
-    return this.creators;
-  }
-  findManyByIds(ids: string[]) {
-    return this.creators.filter((creator) => ids.includes(creator.id));
-  }
-  findOne(id: string) {
-    return this.creators.find((creator) => creator.id === id);
-  }
-  findByName(name: string) {
-    const matchedCreator = this.creators.find(
-      (creator) => creator.name === name,
-    );
-    return matchedCreator
-      ? matchedCreator
-      : `No creator found with name: ${name}`;
+  findAll(): Promise<Creator[]> {
+    return this.creatorRepository.find({ relations: ['books'] });
   }
 
-  update(id: string, updateCreatorInput: UpdateCreatorInput) {
-    const creatorIndex = this.creators.findIndex(
-      (creator) => creator.id === id,
-    );
-    if (creatorIndex === -1) {
-      return `No creator found with id: ${id}`;
+  findManyByIds(ids: string[]): Promise<Creator[]> {
+    return this.creatorRepository.find({ where: { id: In(ids) } });
+  }
+
+  async findOne(id: string): Promise<Creator> {
+    const creator = await this.creatorRepository.findOne({ where: { id }, relations: ['books'] });
+    if (!creator) {
+      throw new NotFoundException(`Creator with id ${id} not found`);
     }
-    this.creators[creatorIndex] = {
-      ...this.creators[creatorIndex],
+    return creator;
+  }
+
+  async findByName(name: string): Promise<Creator> {
+    const creator = await this.creatorRepository.findOne({ where: { name } });
+    if (!creator) {
+      throw new NotFoundException(`No creator found with name: ${name}`);
+    }
+    return creator;
+  }
+
+  async update(id: string, updateCreatorInput: UpdateCreatorInput): Promise<Creator> {
+    const creator = await this.creatorRepository.preload({
+
+      books_ids: updateCreatorInput.books_ids,
       ...updateCreatorInput,
-    };
-    return this.creators[creatorIndex];
+    });
+    if (!creator) {
+      throw new NotFoundException(`No creator found with id: ${id}`);
+    }
+    return this.creatorRepository.save(creator);
   }
 
-  remove(id: string) {
-    const creatorIndex = this.creators.findIndex(
-      (creator) => creator.id === id,
-    );
-    if (creatorIndex === -1) {
-      return `No creator found with id: ${id}`;
+  async remove(id: string): Promise<void> {
+    const result = await this.creatorRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`No creator found with id: ${id}`);
     }
-    const removedCreator = this.creators.splice(creatorIndex, 1);
-    return removedCreator[0];
   }
 }

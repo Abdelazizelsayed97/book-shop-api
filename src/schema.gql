@@ -2,49 +2,13 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-type UserWithoutPassword {
-  id: String!
-  firstName: String!
-  lastName: String!
-  email: String!
-  phone: String!
-  isEmailVerified: Boolean
-  emailVerificationToken: String
-  emailVerificationExpires: DateTime
-  resetPasswordToken: String
-  resetPasswordExpires: DateTime
-  otpCode: String
-  otpExpires: DateTime
-  createdAt: DateTime!
-  updatedAt: DateTime!
-}
-
-"""
-A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
-"""
-scalar DateTime
-
-type AuthResponse {
-  success: Boolean!
-  message: String
-  token: String
-  user: UserWithoutPassword
-}
-
-type OtpResponse {
-  success: Boolean!
-  message: String
-  otpId: String
-}
-
 type UserEntity implements IUser {
   id: ID!
-  name: String!
   role: String!
   firstName: String!
   lastName: String!
   email: String!
-  password: String!
+  password: String
   phone: String!
   isEmailVerified: Boolean
   emailVerificationToken: String
@@ -59,8 +23,25 @@ type UserEntity implements IUser {
 
 interface IUser {
   id: ID!
-  name: String!
   role: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type AuthResponse {
+  success: Boolean!
+  message: String
+  token: String
+  user: UserEntity
+}
+
+type OtpResponse {
+  success: Boolean!
+  message: String
+  otpId: String
 }
 
 type ShippingAddress {
@@ -73,8 +54,8 @@ type ShippingAddress {
 
 type Creator implements IUser {
   id: ID!
-  name: String!
   role: String!
+  name: String!
   books: [Book!]!
 }
 
@@ -94,7 +75,7 @@ type Cart {
 }
 
 type Product {
-  id: Int!
+  id: String!
   name: String!
   description: String!
   price: Float!
@@ -124,8 +105,13 @@ type PaginatedProducts {
 }
 
 type Order {
-  """Example field (placeholder)"""
-  exampleField: Int!
+  order_id: String!
+  user_id: String!
+  itemIds: [String!]!
+  total_price: Float!
+  status: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 input ShippingAddressInput {
@@ -139,20 +125,20 @@ input ShippingAddressInput {
 type Query {
   getUsers: [UserEntity!]!
   getUser(id: String!): UserEntity
-  cart(id: Int!): Cart!
+  cart(id: String!): Cart!
+  books: [Book!]!
+  book(id: String!): Book!
+  creators: [Creator!]!
+  creator(id: String!): Creator!
   products(filter: ProductFilterInput, pagination: PaginationInput, sort: ProductSortInput): PaginatedProducts!
-  product(id: Int!): Product!
+  product(id: String!): Product!
   categories: [String!]!
   brands: [String!]!
   productsByCategory(category: String!): [Product!]!
   productsByBrand(brand: String!): [Product!]!
   searchProducts(query: String!): [Product!]!
-  books: [Book!]!
-  book(id: String!): Book!
-  creators: [Creator!]!
-  creator(id: String!): Creator!
   search(searchInput: SearchInput!): [SearchResult!]!
-  order(id: Int!): Order!
+  order(id: String!): Order!
 }
 
 input ProductFilterInput {
@@ -186,7 +172,7 @@ input SearchInput {
 type Mutation {
   register(registerInput: RegisterDto!): AuthResponse!
   login(loginInput: LoginDto!): AuthResponse!
-  verifyEmail(token: String!): AuthResponse!
+  verifyEmail(otpCode: String!, userId: String!): AuthResponse!
   forgotPassword(forgotPasswordDto: ForgotPasswordDto!): AuthResponse!
   resetPassword(resetPasswordDto: ResetPasswordDto!): AuthResponse!
   sendOtp(email: String!): OtpResponse!
@@ -197,20 +183,20 @@ type Mutation {
   deleteUser(id: String!): Boolean!
   createCart(createCartInput: CreateCartInput!): Cart!
   updateCart(updateCartInput: UpdateCartInput!): Cart!
-  removeCart(id: Int!): Cart!
-  createProduct(createProductInput: CreateProductInput!): Product!
-  updateProduct(updateProductInput: UpdateProductInput!): Product!
-  removeProduct(id: Int!): Product!
+  removeCart(id: String!): Cart!
   createBook(createBookInput: CreateBookInput!): Book!
   updateBook(input: UpdateBookInput!): Book!
   removeBook(id: String!): Book!
   createCreator(createCreatorInput: CreateCreatorInput!): Creator!
   updateCreator(updateCreatorInput: UpdateCreatorInput!): Creator!
   removeCreator(id: String!): Creator!
+  createProduct(createProductInput: CreateProductInput!): Product!
+  updateProduct(updateProductInput: UpdateProductInput!): Product!
+  removeProduct(id: String!): Product!
   clearSearchHistory(searchInput: SearchInput!): Boolean!
   createOrder(createOrderInput: CreateOrderInput!): Order!
   updateOrder(updateOrderInput: UpdateOrderInput!): Order!
-  removeOrder(id: Int!): Order!
+  removeOrder(id: String!): Order!
 }
 
 input RegisterDto {
@@ -283,7 +269,11 @@ input CreateCartInput {
 This mutation responsable to add a new book to the libarary, all field are required 
 """
 input CreateBookInput {
-  creatorIds: [String!]!
+  book_id: String!
+  title: String!
+  year: String!
+  isBorrowed: Boolean!
+  creatorId: [String!]!
 }
 
 input UpdateCartInput {
@@ -291,7 +281,26 @@ input UpdateCartInput {
   user_id: String
   items: [CreateBookInput!]
   shipping_address: ShippingAddressInput
-  id: Int!
+  id: String!
+}
+
+input UpdateBookInput {
+  book_id: String!
+  title: String
+  year: String
+  isBorrowed: Boolean
+  creatorId: [String!]
+}
+
+input CreateCreatorInput {
+  name: String!
+  books_ids: [String!]!
+}
+
+input UpdateCreatorInput {
+  name: String
+  books_ids: [String!]
+  id: String!
 }
 
 input CreateProductInput {
@@ -318,33 +327,19 @@ input UpdateProductInput {
   rating: Float
   reviewCount: Int
   isActive: Boolean = true
-  id: Int!
-}
-
-input UpdateBookInput {
-  book_id: String!
-  title: String
-  year: String
-  isBorrowed: Boolean
-  creatorIds: [String!]
-}
-
-input CreateCreatorInput {
-  name: String!
-}
-
-input UpdateCreatorInput {
-  name: String
   id: String!
 }
 
 input CreateOrderInput {
-  """Example field (placeholder)"""
-  exampleField: Int!
+  """Order ID"""
+  id: String!
+  cartId: String!
+  userId: String!
 }
 
 input UpdateOrderInput {
-  """Example field (placeholder)"""
-  exampleField: Int
-  id: Int!
+  """Order ID"""
+  id: String!
+  cartId: String
+  userId: String
 }
